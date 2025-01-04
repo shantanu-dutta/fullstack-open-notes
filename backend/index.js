@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import { nanoid } from "nanoid";
+import 'dotenv/config';
+import Note from "./models/note.js";
 
 const requestLogger = (req, res, next) => {
   console.log("Method:", req.method);
@@ -21,30 +23,12 @@ app.use(cors());
 app.use(express.json());
 app.use(requestLogger);
 
-let notes = [
-  {
-    id: nanoid(),
-    content: "HTML is relatively easy",
-    important: true,
-  },
-  {
-    id: nanoid(),
-    content: "Browser can execute only JavaScript",
-    important: false,
-  },
-  {
-    id: nanoid(),
-    content: "GET and POST are the most important methods of HTTP protocol",
-    important: true,
-  },
-];
-
 app.get("/", (request, response) => {
   response.send("<h1>Hello World!</h1>");
 });
 
 app.get("/api/notes", (request, response) => {
-  response.json(notes);
+  Note.find({}).then(notes => response.json(notes))
 });
 
 app.get("/api/notes/:id", (request, response) => {
