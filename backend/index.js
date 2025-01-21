@@ -1,4 +1,4 @@
-import express from "express";
+import express, { response } from "express";
 import cors from "cors";
 import 'dotenv/config';
 import Note from "./models/note.js";
@@ -15,11 +15,13 @@ const unknownEndpoint = (request, response) => {
   response.status(404).send({ error: "unknown endpoint" });
 };
 
-const errorHandler = (error, req, res, next) => {
+const errorHandler = (error, request, response, next) => {
   console.log(error.message);
 
   if (error.name === "CastError") {
     return response.status(400).send({ error: 'malformatted id' })
+  } else if (error.name === "ValidationError") {
+    return response.status(400).send({ error: error.message })
   }
 
   next(error)
@@ -56,7 +58,7 @@ app.delete("/api/notes/:id", (request, response, next) => {
     .catch(error => next(error));
 });
 
-app.post("/api/notes", (request, response) => {
+app.post("/api/notes", (request, response, next) => {
   const body = request.body;
 
   if (!body.content) {
@@ -72,7 +74,7 @@ app.post("/api/notes", (request, response) => {
 
   note.save().then(savedNote => {
     response.json(savedNote);
-  })
+  }).catch(error => next(error));
 });
 
 app.put("/api/notes/:id", (req, res, next) => {
@@ -83,7 +85,7 @@ app.put("/api/notes/:id", (req, res, next) => {
     important: body.important
   };
 
-  Note.findByIdAndUpdate(req.params.id, note, { new: true })
+  Note.findByIdAndUpdate(req.params.id, note, { new: true, runValidators: true, context: 'query' })
     .then(updatedNote => res.json(updatedNote))
     .catch(err => next(err));
 });

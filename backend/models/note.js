@@ -7,11 +7,15 @@ console.log("Connecting to MongoDB");
 mongoose.set('strictQuery', false)
 
 mongoose.connect(url)
-.then(result => console.log("Connected to MongoDB"))
-.catch(err => console.log(`Error connecting to MongoDB: ${err.message}`))
+  .then(result => console.log("Connected to MongoDB"))
+  .catch(err => console.log(`Error connecting to MongoDB: ${err.message}`))
 
 const noteSchema = new mongoose.Schema({
-  content: String,
+  content: {
+    type: String,
+    minLength: 5,
+    required: true
+  },
   important: Boolean
 })
 noteSchema.set('toJSON', {
