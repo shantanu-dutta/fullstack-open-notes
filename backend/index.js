@@ -1,6 +1,5 @@
 import express from "express";
 import cors from "cors";
-import { nanoid } from "nanoid";
 import 'dotenv/config';
 import Note from "./models/note.js";
 
@@ -14,6 +13,16 @@ const requestLogger = (req, res, next) => {
 
 const unknownEndpoint = (request, response) => {
   response.status(404).send({ error: "unknown endpoint" });
+};
+
+const errorHandler = (error, req, res, next) => {
+  console.log(error.message);
+
+  if (error.name === "CastError") {
+    return response.status(400).send({ error: 'malformatted id' })
+  }
+
+  next(error)
 };
 
 const app = express();
@@ -31,22 +40,20 @@ app.get("/api/notes", (request, response) => {
   Note.find({}).then(notes => response.json(notes))
 });
 
-app.get("/api/notes/:id", (request, response) => {
-  const id = request.params.id;
-  const note = notes.find((note) => note.id === id);
-
-  if (note) {
-    response.json(note);
-  } else {
-    response.status(404).end();
-  }
+app.get("/api/notes/:id", (request, response, next) => {
+  Note.findById(request.params.id).then(note => {
+    if (note) {
+      response.json(note)
+    } else {
+      response.status(404).end()
+    }
+  }).catch(err => next(error))
 });
 
-app.delete("/api/notes/:id", (request, response) => {
-  const id = request.params.id;
-  notes = notes.filter((note) => note.id !== id);
-
-  response.status(204).end();
+app.delete("/api/notes/:id", (request, response, next) => {
+  Note.findByIdAndDelete(req.params.id)
+    .then(result => response.status(204).end())
+    .catch(error => next(error));
 });
 
 app.post("/api/notes", (request, response) => {
@@ -58,18 +65,32 @@ app.post("/api/notes", (request, response) => {
     });
   }
 
-  const note = {
-    id: nanoid(),
+  const note = new Note({
     content: body.content,
-    important: Boolean(body.important) || false,
+    important: body.important || false
+  })
+
+  note.save().then(savedNote => {
+    response.json(savedNote);
+  })
+});
+
+app.put("/api/notes/:id", (req, res, next) => {
+  const body = req.body;
+
+  const note = {
+    content: body.content,
+    important: body.important
   };
 
-  notes = notes.concat(note);
-
-  response.json(note);
+  Note.findByIdAndUpdate(req.params.id, note, { new: true })
+    .then(updatedNote => res.json(updatedNote))
+    .catch(err => next(err));
 });
 
 app.use(unknownEndpoint);
+
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 3001;
 
